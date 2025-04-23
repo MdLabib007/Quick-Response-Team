@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Quick Response App</title>
+</head>
+<body>
+  <h1>Pending Signals</h1>
+  <ul id="signals-list">Loading...</ul>
+
+  <script>
+    // Fetch signals from the backend (Initial fetch when page loads)
+    function fetchSignals() {
+      fetch('http://localhost:1355/api/signals') // Make sure your server is running on this URL
+        .then(response => response.json())
+        .then(data => {
+          const list = document.getElementById('signals-list');
+          list.innerHTML = ''; // clear loading text
+
+          if (data.length === 0) {
+            list.innerHTML = '<li>No pending signals found.</li>';
+          }
+
+          // Iterate over each signal and display it
+          data.forEach(signal => {
+              const li = document.createElement('li');
+              li.id = signal._id; // Set the signal _id as the li id
+
+              li.innerHTML = `From ${signal.userName} at [${signal.location.lat}, ${signal.location.lon}] - 
+                              Status: <span id="status-${signal._id}">${signal.status}</span> - 
+                              Message: ${signal.message} <br>
+                              <button onclick="acceptSignal('${signal._id}')">Accept</button>
+                              <button onclick="rejectSignal('${signal._id}')">Reject</button>`;
+              list.appendChild(li);
+
+              // If the signal is already accepted or rejected, disable the buttons
+              if (signal.status === 'accepted' || signal.status === 'rejected') {
+                  const statusElement = document.getElementById(`status-${signal._id}`);
+                  statusElement.innerText = signal.status; // Update status to accepted or rejected
+                  const buttons = li.querySelectorAll('button');
+                  buttons.forEach(button => button.disabled = true); // Disable buttons
+              }
+          });
+
+        })
+        .catch(error => {
+          document.getElementById('signals-list').innerText = 'Failed to load signals.';
+          console.error('Error fetching signals:', error);
+        });
+    }
+
+    // Call the fetch function initially to load the signals
+    fetchSignals();
+
+    // Function to handle accepting a signal
+    function acceptSignal(signalId) {
+      fetch(`http://localhost:1355/api/signals/${signalId}/accept`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          volunteerName: 'Volunteer1', // Replace with actual volunteer name if needed
+        }),
+      })
+        .then(response => response.json())
+        .then(data => {
+          alert('Signal accepted!');
+          
+          // After accepting, force a re-fetch of the updated list of signals
+          fetchSignals();
+        })
+        .catch(error => {
+          console.error('Error accepting signal:', error);
+          alert('Failed to accept the signal.');
+        });
+    }
+
+    // Function to handle rejecting a signal
+    function rejectSignal(signalId) {
+      fetch(`http://localhost:1355/api/signals/${signalId}/reject`, {
+        method: 'POST',
+      })
+        .then(response => response.json())
+        .then(data => {
+          alert('Signal rejected!');
+          
+          // After rejecting, force a re-fetch of the updated list of signals
+          fetchSignals();
+        })
+        .catch(error => {
+          console.error('Error rejecting signal:', error);
+          alert('Failed to reject the signal.');
+        });
+    }
+  </script>
+</body>
+</html>
